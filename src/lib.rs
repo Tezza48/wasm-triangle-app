@@ -1,7 +1,5 @@
 mod utils;
 
-use std::mem::size_of;
-
 use wasm_bindgen::{JsCast, prelude::*};
 use winit::{event::{Event, WindowEvent}, event_loop::{ControlFlow, EventLoop}, window::WindowBuilder};
 
@@ -10,6 +8,20 @@ use winit::{event::{Event, WindowEvent}, event_loop::{ControlFlow, EventLoop}, w
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
+#[wasm_bindgen(module = "/src/stats.jsShim.js")]
+extern "C" {
+    type Stats;
+
+    #[wasm_bindgen(constructor)]
+    fn new() -> Stats;
+
+    #[wasm_bindgen(method, getter)]
+    fn dom(this: &Stats) -> web_sys::HtmlElement;
+
+    #[wasm_bindgen(method)]
+    fn update(this: &Stats);
+}
 
 #[wasm_bindgen(start)]
 pub fn start() {
@@ -34,13 +46,15 @@ pub fn start() {
             left: 50%;
         ");
 
-    {
-        let window = web_sys::window().expect("Could not get Window from browser");
-        let document = window.document().expect("Could not get document from window");
-        let body = document.body().expect("Could not get body from document");
 
-        body.append_child(&canvas).expect("Could not append canvas to body");
-    }
+    let stats = Stats::new();
+
+    let window = web_sys::window().expect("Could not get Window from browser");
+    let document = window.document().expect("Could not get document from window");
+    let body = document.body().expect("Could not get body from document");
+
+    body.append_child(&stats.dom()).unwrap();
+    body.append_child(&canvas).expect("Could not append canvas to body");
 
     use web_sys::WebGl2RenderingContext as GL;
 
@@ -145,6 +159,8 @@ pub fn start() {
                 gl.use_program(Some(&program));
 
                 gl.draw_arrays(GL::TRIANGLES, 0, 3);
+
+                stats.update();
             },
             _ => (),
         }
