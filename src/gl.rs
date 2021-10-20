@@ -1,0 +1,1 @@
+pub use web_sys::WebGl2RenderingContext as GL;
